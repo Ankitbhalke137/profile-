@@ -7,6 +7,7 @@ import { CursorGlow } from "@/components/cursor-glow";
 import { Nav } from "@/components/nav";
 import { CommandPalette } from "@/components/command-palette";
 import { Footer } from "@/components/footer";
+import { TelegramTracker } from "@/components/telegram-tracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -110,6 +111,7 @@ export default function RootLayout({
           <CursorGlow />
           <Nav />
           <CommandPalette />
+          <TelegramTracker />
           <main id="main">{children}</main>
           <Footer />
         </ThemeProvider>
