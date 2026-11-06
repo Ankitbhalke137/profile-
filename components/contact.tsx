@@ -20,7 +20,7 @@ type Status = "idle" | "sending" | "success" | "error";
 
 type Errors = Partial<Record<"name" | "email" | "message", string>>;
 
-type DeliveryMethod = "resend" | "formspree" | "web3forms" | "mailto";
+type DeliveryMethod = "resend" | "formspree" | "web3forms" | "nodemailer" | "mailto";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -42,6 +42,12 @@ const DELIVERY_OPTIONS: { id: DeliveryMethod; label: string; icon: any; descript
     label: "Web3Forms",
     icon: Mail,
     description: "Delivered via Web3Forms",
+  },
+  {
+    id: "nodemailer",
+    label: "Nodemailer SMTP",
+    icon: Mail,
+    description: "Sent via your SMTP server",
   },
   {
     id: "mailto",

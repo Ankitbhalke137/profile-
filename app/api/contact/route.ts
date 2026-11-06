@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import nodemailer from "nodemailer";
 
 const contactSchema = z.object({
   name: z
@@ -19,7 +20,7 @@ const contactSchema = z.object({
     .max(2000, "Message is too long."),
   company: z.string().max(0).optional(),
   delivery: z
-    .enum(["resend", "formspree", "web3forms", "mailto"])
+    .enum(["resend", "formspree", "web3forms", "nodemailer", "mailto"])
     .optional()
     .default("resend"),
   sendCopy: z.boolean().optional().default(false),
@@ -174,6 +175,47 @@ async function sendViaWeb3Forms({
   }
 }
 
+async function sendViaNodemailer({
+  name,
+  email,
+  message,
+  sendCopy,
+}: {
+  name: string;
+  email: string;
+  message: string;
+  sendCopy: boolean;
+}) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpTo = process.env.CONTACT_TO_EMAIL ?? "bhalkeankit@gmail.com";
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    throw new Error("SMTP_HOST, SMTP_USER, or SMTP_PASS not set");
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Portfolio" <${smtpUser}>`,
+    to: smtpTo,
+    replyTo: email,
+    bcc: sendCopy ? [email] : undefined,
+    subject: `Portfolio message from ${name}`,
+    html: buildHtml({ name, email, message }),
+  });
+}
+
 type DeliveryHandler = (
   data: { name: string; email: string; message: string; sendCopy: boolean },
 ) => Promise<void>;
@@ -182,9 +224,10 @@ const handlers: Record<string, DeliveryHandler> = {
   resend: sendViaResend,
   formspree: sendViaFormspree,
   web3forms: sendViaWeb3Forms,
+  nodemailer: sendViaNodemailer,
 };
 
-const fallbackChain: string[] = ["resend", "formspree", "web3forms"];
+const fallbackChain: string[] = ["resend", "formspree", "web3forms", "nodemailer"];
 
 export async function POST(request: Request) {
   const ip =
