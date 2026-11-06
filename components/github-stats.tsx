@@ -43,7 +43,7 @@ const fallback: GitHubData = {
     followers: 6,
     following: 8,
     name: "Ankit Bhalke",
-    bio: "Full-Stack Developer | CS & AI Student @ PWIOI x MSU | Intern @ nwo Pune",
+    bio: "Full-Stack Developer | CS & AI Student @ PWIOI x MSU | Intern @ Pune",
     avatar_url: "",
     html_url: site.github,
   },
