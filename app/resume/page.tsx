@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 export default function ResumePage() {
   const download = () => {
     const a = document.createElement("a");
-    a.href = "/resume/Ankit-Bhalke-Resume.pdf";
+    a.href = "/api/resume";
     a.download = "Ankit-Bhalke-Resume.pdf";
     document.body.appendChild(a);
     a.click();
@@ -38,7 +38,7 @@ export default function ResumePage() {
               Download PDF
             </button>
             <a
-              href="/resume/Ankit-Bhalke-Resume.pdf"
+              href="/api/resume"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center rounded-full border border-line bg-surface-2 px-5 py-3 text-sm font-medium text-ink transition-colors hover:border-line-strong"
