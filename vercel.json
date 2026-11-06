@@ -1,18 +1,5 @@
 {
-  "version": 3,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ],
   "env": {
-    "NEXT_PUBLIC_SITE_URL": "https://ankitbhalke.vercel.app"
+    "NEXT_PUBLIC_SITE_URL": "https://profile-tan-beta.vercel.app"
   }
 }
