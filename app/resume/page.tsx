@@ -66,7 +66,7 @@ export default function ResumePage() {
                 ["GitHub", "@Ankitbhalke137"],
                 ["LinkedIn", "ankit-bhalke"],
                 ["Education", "B.Tech CS & AI — PWIOI × MSU (2025–2029)"],
-                ["Internship", "SDE Intern — LeapX, Pune (2026–Present)"],
+                ["Internship", "Full Stack Dev Intern — nwo, Pune (2026–Present)"],
                 ["Previous", "YIIC Intern — Scaler (2025)"],
               ].map(([term, value]) => (
                 <div
