@@ -20,42 +20,7 @@ type Status = "idle" | "sending" | "success" | "error";
 
 type Errors = Partial<Record<"name" | "email" | "message", string>>;
 
-type DeliveryMethod = "resend" | "formspree" | "web3forms" | "nodemailer" | "mailto";
-
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const DELIVERY_OPTIONS: { id: DeliveryMethod; label: string; icon: any; description: string }[] = [
-  {
-    id: "resend",
-    label: "Direct API",
-    icon: Send,
-    description: "Sent via server route handler",
-  },
-  {
-    id: "formspree",
-    label: "Formspree",
-    icon: Mail,
-    description: "Delivered via Formspree",
-  },
-  {
-    id: "web3forms",
-    label: "Web3Forms",
-    icon: Mail,
-    description: "Delivered via Web3Forms",
-  },
-  {
-    id: "nodemailer",
-    label: "Nodemailer SMTP",
-    icon: Mail,
-    description: "Sent via your SMTP server",
-  },
-  {
-    id: "mailto",
-    label: "Direct email",
-    icon: Mail,
-    description: "Opens your email app",
-  },
-];
 
 export function Contact() {
   const [status, setStatus] = useState<Status>("idle");
@@ -66,11 +31,9 @@ export function Contact() {
     email: "",
     message: "",
     company: "",
-    delivery: "resend" as DeliveryMethod,
-    sendCopy: false,
   });
 
-  const update = (field: keyof typeof form, value: string | boolean) => {
+  const update = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     if (field in errors) {
       setErrors((current) => ({ ...current, [field]: undefined }));
@@ -93,25 +56,6 @@ export function Contact() {
     setServerError("");
     if (!validate()) return;
 
-    // Direct mailto: open the user's email client instead of calling the API.
-    if (form.delivery === "mailto") {
-      const subject = encodeURIComponent(`Portfolio message from ${form.name}`);
-      const body = encodeURIComponent(
-        `Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`,
-      );
-      window.location.href = `mailto:${site.email}?subject=${subject}&body=${body}`;
-      setStatus("success");
-      setForm({
-        name: "",
-        email: "",
-        message: "",
-        company: "",
-        delivery: "resend",
-        sendCopy: false,
-      });
-      return;
-    }
-
     setStatus("sending");
     try {
       const response = await fetch("/api/contact", {
@@ -128,14 +72,7 @@ export function Contact() {
       }
 
       setStatus("success");
-      setForm({
-        name: "",
-        email: "",
-        message: "",
-        company: "",
-        delivery: "resend",
-        sendCopy: false,
-      });
+      setForm({ name: "", email: "", message: "", company: "" });
     } catch {
       setStatus("error");
       setServerError("Network error. Please email me directly.");
@@ -330,67 +267,6 @@ export function Contact() {
                         {errors.message}
                       </p>
                     ) : null}
-                  </div>
-
-                  <div className="mt-3">
-                    <label
-                      htmlFor="delivery"
-                      className="mb-1.5 block font-mono text-[9px] uppercase tracking-[0.16em] text-muted-2"
-                    >
-                      Delivery method
-                    </label>
-                    <div
-                      id="delivery"
-                      className="grid gap-2 sm:grid-cols-2"
-                      role="radiogroup"
-                      aria-label="Delivery method"
-                    >
-                      {DELIVERY_OPTIONS.map((option) => (
-                        <label
-                          key={option.id}
-                          className={cn(
-                            "flex items-center gap-2 rounded-xl border bg-surface-2 px-3 py-2 text-[12px] transition-colors",
-                            form.delivery === option.id
-                              ? "border-accent bg-accent/5 text-ink"
-                              : "border-line text-muted hover:border-accent/30",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="delivery"
-                            value={option.id}
-                            checked={form.delivery === option.id}
-                            onChange={() => update("delivery", option.id)}
-                            className="size-4 shrink-0 text-accent"
-                            aria-label={option.label}
-                          />
-                          <option.icon className="size-3.5 shrink-0" />
-                          <span className="font-medium">{option.label}</span>
-                          <span className="ml-auto text-[10px] text-muted-2">
-                            {option.description}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-start gap-2">
-                    <input
-                      id="send-copy"
-                      type="checkbox"
-                      checked={form.sendCopy}
-                      onChange={(event) => update("sendCopy", event.target.checked)}
-                      className="mt-0.5 size-4 shrink-0 text-accent"
-                    />
-                    <label
-                      htmlFor="send-copy"
-                      className="text-[12px] text-muted leading-5"
-                    >
-                      <span className="font-medium">Send me a copy</span>{" "}
-                      <span className="text-muted-2">
-                        — I&apos;ll receive a copy of this message at my email
-                      </span>
-                    </label>
                   </div>
 
                   {/* Honeypot: hidden from humans, tempting to bots. */}

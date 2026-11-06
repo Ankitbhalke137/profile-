@@ -19,11 +19,6 @@ const contactSchema = z.object({
     .min(10, "Tell me a little more (10+ characters).")
     .max(2000, "Message is too long."),
   company: z.string().max(0).optional(),
-  delivery: z
-    .enum(["resend", "formspree", "web3forms", "nodemailer", "mailto"])
-    .optional()
-    .default("resend"),
-  sendCopy: z.boolean().optional().default(false),
 });
 
 type Bucket = { count: number; resetAt: number };
@@ -72,12 +67,10 @@ async function sendViaResend({
   name,
   email,
   message,
-  sendCopy,
 }: {
   name: string;
   email: string;
   message: string;
-  sendCopy: boolean;
 }) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) throw new Error("RESEND_API_KEY not set");
@@ -85,8 +78,6 @@ async function sendViaResend({
   const to = process.env.CONTACT_TO_EMAIL ?? "bhalkeankit@gmail.com";
   const from =
     process.env.CONTACT_FROM_EMAIL ?? "Portfolio <onboarding@resend.dev>";
-  const replyTo = [email];
-  const bcc = sendCopy ? [email] : undefined;
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -97,8 +88,7 @@ async function sendViaResend({
     body: JSON.stringify({
       from,
       to: [to],
-      reply_to: replyTo,
-      bcc,
+      reply_to: [email],
       subject: `Portfolio message from ${name}`,
       html: buildHtml({ name, email, message }),
     }),
@@ -114,12 +104,10 @@ async function sendViaFormspree({
   name,
   email,
   message,
-  sendCopy,
 }: {
   name: string;
   email: string;
   message: string;
-  sendCopy: boolean;
 }) {
   const formspreeEndpoint = process.env.FORMSPREE_ENDPOINT;
   if (!formspreeEndpoint) throw new Error("FORMSPREE_ENDPOINT not set");
@@ -128,7 +116,6 @@ async function sendViaFormspree({
   body.set("name", name);
   body.set("email", email);
   body.set("message", message);
-  if (sendCopy) body.set("_cc", email);
   body.set("_subject", `Portfolio message from ${name}`);
 
   const response = await fetch(formspreeEndpoint, {
@@ -146,12 +133,10 @@ async function sendViaWeb3Forms({
   name,
   email,
   message,
-  sendCopy,
 }: {
   name: string;
   email: string;
   message: string;
-  sendCopy: boolean;
 }) {
   const web3formsAccessKey = process.env.WEB3FORMS_ACCESS_KEY;
   if (!web3formsAccessKey) throw new Error("WEB3FORMS_ACCESS_KEY not set");
@@ -162,7 +147,6 @@ async function sendViaWeb3Forms({
   body.set("email", email);
   body.set("message", message);
   body.set("subject", `Portfolio message from ${name}`);
-  if (sendCopy) body.set("cc", email);
 
   const response = await fetch("https://api.web3forms.com/submit", {
     method: "POST",
@@ -179,12 +163,10 @@ async function sendViaNodemailer({
   name,
   email,
   message,
-  sendCopy,
 }: {
   name: string;
   email: string;
   message: string;
-  sendCopy: boolean;
 }) {
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
@@ -210,14 +192,13 @@ async function sendViaNodemailer({
     from: `"Portfolio" <${smtpUser}>`,
     to: smtpTo,
     replyTo: email,
-    bcc: sendCopy ? [email] : undefined,
     subject: `Portfolio message from ${name}`,
     html: buildHtml({ name, email, message }),
   });
 }
 
 type DeliveryHandler = (
-  data: { name: string; email: string; message: string; sendCopy: boolean },
+  data: { name: string; email: string; message: string },
 ) => Promise<void>;
 
 const handlers: Record<string, DeliveryHandler> = {
@@ -255,30 +236,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, email, message, company, delivery, sendCopy } = parsed.data;
+  const { name, email, message, company } = parsed.data;
 
   // Honeypot: silently accept bot submissions.
   if (company) {
     return NextResponse.json({ ok: true, delivered: false });
   }
 
-  const data = { name, email, message, sendCopy: Boolean(sendCopy) };
+  const data = { name, email, message };
 
-  // Direct mailto: handled entirely on the client, but accept it here too.
-  if (delivery === "mailto") {
-    return NextResponse.json({
-      ok: true,
-      delivered: false,
-      method: "mailto",
-      note: "Opened mailto link on client",
-    });
-  }
-
-  // Try the requested delivery method first, then fall back through the chain.
+  // Try each delivery service in order until one succeeds.
   const tried: string[] = [];
-  const order = delivery && handlers[delivery] ? [delivery, ...fallbackChain] : [...fallbackChain];
 
-  for (const method of order) {
+  for (const method of fallbackChain) {
     if (tried.includes(method)) continue;
     tried.push(method);
 
@@ -298,7 +268,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // All delivery methods failed — fall back to logging.
+  // All delivery methods failed — log server-side.
   console.info("[contact] All delivery methods failed, logging message", {
     name,
     email,
