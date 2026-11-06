@@ -27,7 +27,7 @@ const facts = [
   {
     icon: Briefcase,
     label: "Currently",
-    value: "Full Stack Dev @ nwo",
+    value: "Intern @ LeapX Pune",
   },
   {
     icon: GraduationCap,
