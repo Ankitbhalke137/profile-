@@ -91,24 +91,6 @@ export function Skills() {
           })}
         </div>
 
-        <Reveal delay={0.1}>
-          <div className="mt-3 flex flex-col justify-between gap-3 rounded-2xl border border-accent/15 bg-accent-soft/40 px-5 py-4 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3">
-              <span className="grid size-8 place-items-center rounded-lg border border-accent/20 bg-accent/10 text-accent">
-                <BookOpen className="size-4" />
-              </span>
-              <div>
-                <p className="text-[13px] font-medium">Currently going deeper</p>
-                <p className="text-[12px] text-muted">
-                  System design · cloud fundamentals · DSA
-                </p>
-              </div>
-            </div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-accent">
-              Always shipping something
-            </p>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

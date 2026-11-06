@@ -147,10 +147,10 @@ export function About() {
             </Reveal>
             <Reveal delay={0.15}>
               <p>
-                Right now I&apos;m interning at LeapX, shipping a blog CMS in a
-                Turborepo monorepo. I&apos;m looking for SDE internships where
-                I can own real surface area and learn from people who have
-                shipped at scale.
+                Right now I&apos;m a Full Stack Developer Intern at nwo,
+                shipping a blog CMS in a Turborepo monorepo. I&apos;m looking
+                for SDE internships where I can own real surface area and learn
+                from people who have shipped at scale.
               </p>
             </Reveal>
           </div>
@@ -169,10 +169,6 @@ export function About() {
                 {
                   title: "Write it down",
                   body: "If I can't explain the tradeoff, I don't understand the system yet.",
-                },
-                {
-                  title: "Stay curious",
-                  body: "Currently going deeper on system design, cloud, and DSA.",
                 },
               ].map((principle) => (
                 <div

@@ -86,7 +86,7 @@ export default function ResumePage() {
                 Currently
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Software Engineer Intern at LeapX, building the blog CMS in a
+                Full Stack Developer Intern at nwo, building the blog CMS in a
                 Turborepo monorepo. Full-time SDE internship roles opening in
                 2027.
               </p>

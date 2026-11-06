@@ -299,8 +299,8 @@ export const skillGroups = [
 
 export const experience = [
   {
-    role: "Software Engineer Intern",
-    company: "LeapX",
+    role: "Full Stack Developer Intern",
+    company: "nwo",
     location: "Pune, India",
     period: "2026 — Present",
     summary:
