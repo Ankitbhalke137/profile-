@@ -56,37 +56,79 @@ function getClientIP(request: Request): string {
   return (request as any).ip || "unknown";
 }
 
-// Simple geolocation using a free IP service
-// Note: Free IP geolocation without API keys has limitations.
-// This uses a basic approach — for production, consider ipinfo.io or similar with an API key.
+// Free IP geolocation services — prioritized for best coverage
+const IP_GEO_SERVICES = [
+  {
+    name: "ipapi.co",
+    url: (ip: string) => `https://ipapi.co/${ip}/json/`,
+    // Free tier: no key required but rate-limited (~1k/day per IP)
+  },
+  {
+    name: "ipinfo.io",
+    url: (ip: string) => `https://ipinfo.io/${ip}/json`,
+    // Free tier: ~1k requests/day without key, with key: unlimited
+    // Returns: { ip, city, region, country, org, hostname, ... }
+  },
+];
+
 async function getGeoInfo(ip: string) {
-  try {
-    // Using ipapi.co's IP lookup endpoint (free tier, no key required for basic use)
-    // Format: https://ipapi.co/<IP>/json/
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`https://ipapi.co/${ip}/json/`, {
-      method: "GET",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) throw new Error("Geo API error");
-    const data = await res.json();
-    return {
-      city: data.city ?? "unknown",
-      region: data.region ?? "unknown",
-      country: data.country_name ?? "unknown",
-      org: data.org ?? "unknown",
-    };
-  } catch {
-    // If geolocation fails, return unknown values but don't break the flow
-    return {
-      city: "unknown",
-      region: "unknown",
-      country: "unknown",
-      org: "unknown",
-    };
+  // Try each geolocation service in priority order
+  for (const service of IP_GEO_SERVICES) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(service.url(ip), {
+        method: "GET",
+        signal: controller.signal,
+        headers: service.name === "ipinfo.io" ? { "Accept": "application/json" } : {},
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        // If we got a meaningful error, check if it's a rate limit or valid error
+        if (errData.reason === "RateLimited" || errData.error) {
+          // Continue to next service
+          continue;
+        }
+        // If it's a valid response with data, use it
+        const data = errData;
+        if (data.city || data.country) {
+          return {
+            city: data.city ?? "unknown",
+            region: data.region ?? data.city ? data.city : "unknown",
+            country: data.country_name ?? data.country ?? "unknown",
+            org: data.org ?? "unknown",
+          };
+        }
+        continue; // Try next service
+      }
+
+      const data = await res.json();
+
+      // ipapi.co response format: { city, region, country_name, org, ... }
+      // ipinfo.io response format: { ip, city, region, country, org, hostname, ... }
+      if (data.city || data.region) {
+        return {
+          city: data.city ?? data.region ? data.region : "unknown",
+          region: data.region ?? data.city ? data.city : "unknown",
+          country: data.country_name ?? data.country ?? "unknown",
+          org: data.org ?? data.postal ?? "unknown",
+        };
+      }
+    } catch {
+      // Continue to next service on any error
+      continue;
+    }
   }
+
+  // If all services fail, return unknown values but don't break the flow
+  return {
+    city: "unknown",
+    region: "unknown",
+    country: "unknown",
+    org: "unknown",
+  };
 }
 
 export async function POST(request: Request) {
