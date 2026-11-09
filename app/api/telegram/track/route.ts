@@ -28,13 +28,19 @@ async function sendToTelegram(message: string) {
 }
 
 // Extract the real client IP from the request
-// Priority: cf-connecting-ip (Cloudflare) > x-forwarded-for > x-real-ip > x-vercel-ip > request.ip
+// Priority: cf-connecting-ip (Cloudflare) > x-vercel-ip (Vercel edge) > x-forwarded-for > x-real-ip > request.ip
 function getClientIP(request: Request): string {
   // Cloudflare connects header (most accurate when behind Cloudflare)
   const cfIp = request.headers.get("cf-connecting-ip");
   if (cfIp) {
     // cf-connecting-ip should already be just the client IP
     return cfIp.trim();
+  }
+
+  // x-vercel-ip header (Vercel edge network — reliable client IP)
+  const vercelIp = request.headers.get("x-vercel-ip");
+  if (vercelIp) {
+    return vercelIp.trim();
   }
 
   // Standard x-forwarded-for (reverse proxy)
@@ -49,12 +55,6 @@ function getClientIP(request: Request): string {
   const realIp = request.headers.get("x-real-ip");
   if (realIp) {
     return realIp.trim();
-  }
-
-  // x-vercel-ip header (Vercel edge network)
-  const vercelIp = request.headers.get("x-vercel-ip");
-  if (vercelIp) {
-    return vercelIp.trim();
   }
 
   // Fallback to Node.js request.ip (direct connection, no proxy)
