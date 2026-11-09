@@ -28,7 +28,7 @@ async function sendToTelegram(message: string) {
 }
 
 // Extract the real client IP from the request
-// Priority: cf-connecting-ip (Cloudflare) > x-forwarded-for > x-real-ip > request.ip
+// Priority: cf-connecting-ip (Cloudflare) > x-forwarded-for > x-real-ip > x-vercel-ip > request.ip
 function getClientIP(request: Request): string {
   // Cloudflare connects header (most accurate when behind Cloudflare)
   const cfIp = request.headers.get("cf-connecting-ip");
@@ -51,6 +51,12 @@ function getClientIP(request: Request): string {
     return realIp.trim();
   }
 
+  // x-vercel-ip header (Vercel edge network)
+  const vercelIp = request.headers.get("x-vercel-ip");
+  if (vercelIp) {
+    return vercelIp.trim();
+  }
+
   // Fallback to Node.js request.ip (direct connection, no proxy)
   // @ts-ignore - Node.js Request.ip property
   return (request as any).ip || "unknown";
@@ -62,16 +68,48 @@ const IP_GEO_SERVICES = [
     name: "ipapi.co",
     url: (ip: string) => `https://ipapi.co/${ip}/json/`,
     // Free tier: no key required but rate-limited (~1k/day per IP)
+    parse: (data: any) => ({
+      city: data.city ?? "unknown",
+      region: data.region ?? "unknown",
+      country: data.country_name ?? "unknown",
+      org: data.org ?? "unknown",
+    }),
+    hasError: (data: any) => data.error || data.reason === "RateLimited",
   },
   {
     name: "ipinfo.io",
     url: (ip: string) => `https://ipinfo.io/${ip}/json`,
     // Free tier: ~1k requests/day without key, with key: unlimited
     // Returns: { ip, city, region, country, org, hostname, ... }
+    parse: (data: any) => ({
+      city: data.city ?? "unknown",
+      region: data.region ?? "unknown",
+      country: data.country ?? "unknown",
+      org: data.org ?? "unknown",
+    }),
+    hasError: (data: any) => data.error,
+  },
+  {
+    name: "ip-api.com",
+    url: (ip: string) => `http://ip-api.com/json/${ip}?fields=city,region,country,org,status`,
+    // Free tier: no key required, ~150 requests/minute
+    // Returns: { status, city, region, country, org, ... }
+    parse: (data: any) => ({
+      city: data.city ?? "unknown",
+      region: data.region ?? "unknown",
+      country: data.country ?? "unknown",
+      org: data.org ?? "unknown",
+    }),
+    hasError: (data: any) => data.status === "fail",
   },
 ];
 
 async function getGeoInfo(ip: string) {
+  // Skip geolocation for invalid/localhost IPs
+  if (!ip || ip === "unknown" || ip === "::1" || ip === "127.0.0.1" || ip.startsWith("::ffff:127.0.0.1")) {
+    return { city: "unknown", region: "unknown", country: "unknown", org: "unknown" };
+  }
+
   // Try each geolocation service in priority order
   for (const service of IP_GEO_SERVICES) {
     try {
@@ -80,42 +118,15 @@ async function getGeoInfo(ip: string) {
       const res = await fetch(service.url(ip), {
         method: "GET",
         signal: controller.signal,
-        headers: service.name === "ipinfo.io" ? { "Accept": "application/json" } : {},
       });
       clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        // If we got a meaningful error, check if it's a rate limit or valid error
-        if (errData.reason === "RateLimited" || errData.error) {
-          // Continue to next service
-          continue;
-        }
-        // If it's a valid response with data, use it
-        const data = errData;
-        if (data.city || data.country) {
-          return {
-            city: data.city ?? "unknown",
-            region: data.region ?? data.city ? data.city : "unknown",
-            country: data.country_name ?? data.country ?? "unknown",
-            org: data.org ?? "unknown",
-          };
-        }
-        continue; // Try next service
-      }
+      if (!res.ok) continue;
 
       const data = await res.json();
+      if (service.hasError(data)) continue;
 
-      // ipapi.co response format: { city, region, country_name, org, ... }
-      // ipinfo.io response format: { ip, city, region, country, org, hostname, ... }
-      if (data.city || data.region) {
-        return {
-          city: data.city ?? data.region ? data.region : "unknown",
-          region: data.region ?? data.city ? data.city : "unknown",
-          country: data.country_name ?? data.country ?? "unknown",
-          org: data.org ?? data.postal ?? "unknown",
-        };
-      }
+      return service.parse(data);
     } catch {
       // Continue to next service on any error
       continue;
