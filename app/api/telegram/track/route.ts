@@ -63,10 +63,13 @@ async function getGeoInfo(ip: string) {
   try {
     // Using ipapi.co's IP lookup endpoint (free tier, no key required for basic use)
     // Format: https://ipapi.co/<IP>/json/
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`https://ipapi.co/${ip}/json/`, {
       method: "GET",
-      timeout: 3000,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error("Geo API error");
     const data = await res.json();
     return {
